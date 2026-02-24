@@ -27,7 +27,7 @@ export default function FR01() {
 
   return (
     <div className="grid gap-4">
-      <Card title="FR01 — Parse Goal">
+      <Card title="Parse Goal">
         <Textarea
           label="Project Goal"
           rows={5}

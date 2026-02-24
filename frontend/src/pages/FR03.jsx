@@ -43,7 +43,7 @@ export default function FR03() {
 
   return (
     <div className="grid gap-4">
-      <Card title="FR03 — Generate Sprint Plan">
+      <Card title="Generate Sprint Plan">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Input
             label="Sprint length (days)"

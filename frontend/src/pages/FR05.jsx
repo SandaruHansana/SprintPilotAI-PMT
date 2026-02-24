@@ -45,7 +45,7 @@ export default function FR05() {
 
   return (
     <div className="grid gap-4">
-      <Card title="FR05 — Predict Task Success">
+      <Card title="Predict Task Success">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input label="Task Type" value={form.task_type} onChange={(e) => setField("task_type", e.target.value)} />
           <Input label="Assignee Role" value={form.assignee_role} onChange={(e) => setField("assignee_role", e.target.value)} />

@@ -32,7 +32,7 @@ export default function FR02() {
 
   return (
     <div className="grid gap-4">
-      <Card title="FR02 — Decompose into Tasks">
+      <Card title="Decompose into Tasks">
         <div className="text-sm text-slate-700">
           FR01 loaded: <b>{fr01 ? "Yes" : "No"}</b>
         </div>

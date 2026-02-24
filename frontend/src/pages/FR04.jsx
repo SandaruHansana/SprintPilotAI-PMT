@@ -52,7 +52,7 @@ export default function FR04() {
 
   return (
     <div className="grid gap-4">
-      <Card title="FR04 — AI Suggest Task Changes">
+      <Card title="AI Suggest Task Changes">
         <div className="text-sm text-slate-700">
           FR03 loaded: <b>{fr03 ? "Yes" : "No"}</b> — tasks available: <b>{titles.length}</b>
         </div>
