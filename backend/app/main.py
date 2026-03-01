@@ -5,7 +5,6 @@ from .resources import RES
 from .fr01 import fr01_router
 from .fr02 import fr02_router
 from .fr03 import fr03_router
-from .fr04 import fr04_router
 from .fr05 import fr05_router
 
 app = FastAPI(title="SprintPilotAI API", version="1.0")
@@ -26,7 +25,6 @@ def startup():
 app.include_router(fr01_router, prefix="/fr01", tags=["FR01"])
 app.include_router(fr02_router, prefix="/fr02", tags=["FR02"])
 app.include_router(fr03_router, prefix="/fr03", tags=["FR03"])
-app.include_router(fr04_router, prefix="/fr04", tags=["FR04"])
 app.include_router(fr05_router, prefix="/fr05", tags=["FR05"])
 
 @app.get("/health")

@@ -1,6 +1,42 @@
 import { useState } from "react";
 import { postJSON } from "../utils/api";
-import { Card, Button, Input } from "../components/UI";
+
+const css = `
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
+
+  .page { max-width: 860px; margin: 0 auto; padding: 32px 20px; display: flex; flex-direction: column; gap: 20px; }
+
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
+  .card-header { padding: 14px 20px; border-bottom: 1px solid #334155; }
+  .card-title { font-size: 15px; font-weight: 700; color: #fff; }
+  .card-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .field input {
+    padding: 8px 12px; border: 1px solid #334155; border-radius: 8px;
+    font-size: 14px; color: #f1f5f9; background: #0f172a;
+    outline: none; font-family: inherit;
+  }
+  .field input:focus { border-color: #10b981; }
+
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .btn { padding: 8px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-primary { background: #10b981; color: #fff; }
+  .btn-primary:hover { background: #059669; }
+  .btn-primary:disabled { background: #a7f3d0; cursor: not-allowed; color: #064e3b; }
+
+  .error { font-size: 13px; color: #dc2626; }
+  .code-out { overflow: auto; border-radius: 8px; background: #0f172a; padding: 14px; font-size: 12px; color: #86efac; font-family: monospace; line-height: 1.6; }
+`;
+
+function Field({ label, children }) {
+  return <div className="field"><label>{label}</label>{children}</div>;
+}
 
 export default function FR05() {
   const [form, setForm] = useState({
@@ -26,63 +62,68 @@ export default function FR05() {
   const [err, setErr] = useState("");
 
   function setField(k, v) {
-    setForm((p) => ({ ...p, [k]: v }));
+    setForm(p => ({ ...p, [k]: v }));
   }
 
   async function run() {
-    setLoading(true);
-    setErr("");
-    setOut(null);
-    try {
-      const data = await postJSON("/fr05/predict", form);
-      setOut(data);
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setErr(""); setOut(null);
+    try { setOut(await postJSON("/fr05/predict", form)); }
+    catch (e) { setErr(e.message); }
+    finally { setLoading(false); }
   }
 
+  const fields = [
+    { key: "task_type", label: "Task Type", type: "text" },
+    { key: "assignee_role", label: "Assignee Role", type: "text" },
+    { key: "experience_years", label: "Experience Years", type: "number" },
+    { key: "team_size", label: "Team Size", type: "number" },
+    { key: "sprint_length_days", label: "Sprint Length (days)", type: "number" },
+    { key: "story_points", label: "Story Points", type: "number" },
+    { key: "estimated_hours", label: "Estimated Hours", type: "number" },
+    { key: "dependencies_count", label: "Dependencies Count", type: "number" },
+    { key: "blockers_count", label: "Blockers Count", type: "number" },
+    { key: "priority_moscow", label: "Priority MoSCoW", type: "text" },
+    { key: "requirement_changes", label: "Requirement Changes", type: "number" },
+    { key: "communication_volume", label: "Communication Volume", type: "number" },
+    { key: "sentiment_score", label: "Sentiment Score (-1..1)", type: "number", step: "0.1" },
+    { key: "ai_acceptance_rate", label: "AI Acceptance Rate (0..1)", type: "number", step: "0.1" },
+  ];
+
   return (
-    <div className="grid gap-4">
-      <Card title="Predict Task Success">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input label="Task Type" value={form.task_type} onChange={(e) => setField("task_type", e.target.value)} />
-          <Input label="Assignee Role" value={form.assignee_role} onChange={(e) => setField("assignee_role", e.target.value)} />
+    <div className="page">
+      <style>{css}</style>
 
-          <Input label="Experience Years" type="number" value={form.experience_years} onChange={(e) => setField("experience_years", Number(e.target.value))} />
-          <Input label="Team Size" type="number" value={form.team_size} onChange={(e) => setField("team_size", Number(e.target.value))} />
-
-          <Input label="Sprint Length Days" type="number" value={form.sprint_length_days} onChange={(e) => setField("sprint_length_days", Number(e.target.value))} />
-          <Input label="Story Points" type="number" value={form.story_points} onChange={(e) => setField("story_points", Number(e.target.value))} />
-
-          <Input label="Estimated Hours" type="number" value={form.estimated_hours} onChange={(e) => setField("estimated_hours", Number(e.target.value))} />
-          <Input label="Dependencies Count" type="number" value={form.dependencies_count} onChange={(e) => setField("dependencies_count", Number(e.target.value))} />
-
-          <Input label="Blockers Count" type="number" value={form.blockers_count} onChange={(e) => setField("blockers_count", Number(e.target.value))} />
-          <Input label="Priority MoSCoW" value={form.priority_moscow} onChange={(e) => setField("priority_moscow", e.target.value)} />
-
-          <Input label="Requirement Changes" type="number" value={form.requirement_changes} onChange={(e) => setField("requirement_changes", Number(e.target.value))} />
-          <Input label="Communication Volume" type="number" value={form.communication_volume} onChange={(e) => setField("communication_volume", Number(e.target.value))} />
-
-          <Input label="Sentiment Score (-1..1)" type="number" step="0.1" value={form.sentiment_score} onChange={(e) => setField("sentiment_score", Number(e.target.value))} />
-          <Input label="AI Acceptance Rate (0..1)" type="number" step="0.1" value={form.ai_acceptance_rate} onChange={(e) => setField("ai_acceptance_rate", Number(e.target.value))} />
+      <div className="card">
+        <div className="card-header"><p className="card-title">Predict Task Success</p></div>
+        <div className="card-body">
+          <div className="grid-2">
+            {fields.map(f => (
+              <Field key={f.key} label={f.label}>
+                <input
+                  type={f.type}
+                  step={f.step}
+                  value={form[f.key]}
+                  onChange={e => setField(f.key, f.type === "number" ? Number(e.target.value) : e.target.value)}
+                />
+              </Field>
+            ))}
+          </div>
+          <div className="row">
+            <button className="btn btn-primary" onClick={run} disabled={loading}>
+              {loading ? "Predicting..." : "Predict"}
+            </button>
+            {err && <span className="error">{err}</span>}
+          </div>
         </div>
-
-        <div className="mt-3 flex items-center gap-3">
-          <Button onClick={run} disabled={loading}>
-            {loading ? "Predicting..." : "Predict"}
-          </Button>
-          {err && <div className="text-sm text-red-600">{err}</div>}
-        </div>
-      </Card>
+      </div>
 
       {out && (
-        <Card title="FR05 Output">
-          <pre className="overflow-auto rounded-xl bg-slate-900 p-4 text-xs text-green-200">
-            {JSON.stringify(out, null, 2)}
-          </pre>
-        </Card>
+        <div className="card">
+          <div className="card-header"><p className="card-title">FR05 Output</p></div>
+          <div className="card-body">
+            <pre className="code-out">{JSON.stringify(out, null, 2)}</pre>
+          </div>
+        </div>
       )}
     </div>
   );
