@@ -17,12 +17,13 @@ const css = `
 
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-  .field input {
+  .field input, .field select {
     padding: 8px 12px; border: 1px solid #334155; border-radius: 8px;
     font-size: 14px; color: #f1f5f9; background: #0f172a;
     outline: none; font-family: inherit;
   }
-  .field input:focus { border-color: #10b981; }
+  .field input:focus, .field select:focus { border-color: #10b981; }
+  .field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
 
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .btn { padding: 8px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
@@ -37,6 +38,15 @@ const css = `
 function Field({ label, children }) {
   return <div className="field"><label>{label}</label>{children}</div>;
 }
+
+const TASK_TYPES = ["Bug", "Chore", "Documentation", "Feature", "Refactor", "Spike"];
+const ASSIGNEE_ROLES = ["Designer", "DevOps", "Developer", "PM", "QA"];
+const MOSCOW_PRIORITIES = [
+  { value: "Must", label: "Must – Critical, non-negotiable" },
+  { value: "Should", label: "Should – High priority but not critical" },
+  { value: "Could", label: "Could – Nice to have if time permits" },
+  { value: "Won't", label: "Won't – Out of scope for now" },
+];
 
 export default function FR05() {
   const [form, setForm] = useState({
@@ -73,8 +83,8 @@ export default function FR05() {
   }
 
   const fields = [
-    { key: "task_type", label: "Task Type", type: "text" },
-    { key: "assignee_role", label: "Assignee Role", type: "text" },
+    { key: "task_type", label: "Task Type", type: "select", options: TASK_TYPES.map(v => ({ value: v, label: v })) },
+    { key: "assignee_role", label: "Assignee Role", type: "select", options: ASSIGNEE_ROLES.map(v => ({ value: v, label: v })) },
     { key: "experience_years", label: "Experience Years", type: "number" },
     { key: "team_size", label: "Team Size", type: "number" },
     { key: "sprint_length_days", label: "Sprint Length (days)", type: "number" },
@@ -82,7 +92,7 @@ export default function FR05() {
     { key: "estimated_hours", label: "Estimated Hours", type: "number" },
     { key: "dependencies_count", label: "Dependencies Count", type: "number" },
     { key: "blockers_count", label: "Blockers Count", type: "number" },
-    { key: "priority_moscow", label: "Priority MoSCoW", type: "text" },
+    { key: "priority_moscow", label: "Priority MoSCoW", type: "select", options: MOSCOW_PRIORITIES },
     { key: "requirement_changes", label: "Requirement Changes", type: "number" },
     { key: "communication_volume", label: "Communication Volume", type: "number" },
     { key: "sentiment_score", label: "Sentiment Score (-1..1)", type: "number", step: "0.1" },
@@ -99,12 +109,23 @@ export default function FR05() {
           <div className="grid-2">
             {fields.map(f => (
               <Field key={f.key} label={f.label}>
-                <input
-                  type={f.type}
-                  step={f.step}
-                  value={form[f.key]}
-                  onChange={e => setField(f.key, f.type === "number" ? Number(e.target.value) : e.target.value)}
-                />
+                {f.type === "select" ? (
+                  <select
+                    value={form[f.key]}
+                    onChange={e => setField(f.key, e.target.value)}
+                  >
+                    {f.options.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={f.type}
+                    step={f.step}
+                    value={form[f.key]}
+                    onChange={e => setField(f.key, f.type === "number" ? Number(e.target.value) : e.target.value)}
+                  />
+                )}
               </Field>
             ))}
           </div>
