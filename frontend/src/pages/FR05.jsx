@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { postJSON } from "../utils/api";
+import { sprintpilot } from "../utils/api";
 
 const css = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
 
-  .page { max-width: 860px; margin: 0 auto; padding: 32px 20px; display: flex; flex-direction: column; gap: 20px; }
+  .page { max-width: 860px; margin: 0 auto; margin-left: calc(220px + ((100vw - 220px - 860px) / 2)); padding: 32px 20px; display: flex; flex-direction: column; gap: 20px; }
+  @media (max-width: 1140px) { .page { margin-left: 220px; } }
+  @media (max-width: 768px) { .page { margin-left: 0; padding: 72px 16px 32px; } }
 
   .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
   .card-header { padding: 14px 20px; border-bottom: 1px solid #334155; }
@@ -32,7 +34,29 @@ const css = `
   .btn-primary:disabled { background: #a7f3d0; cursor: not-allowed; color: #064e3b; }
 
   .error { font-size: 13px; color: #dc2626; }
-  .code-out { overflow: auto; border-radius: 8px; background: #0f172a; padding: 14px; font-size: 12px; color: #86efac; font-family: monospace; line-height: 1.6; }
+
+  /* Result display */
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .result-item { background: #0f172a; border: 1px solid #1e3a2f; border-radius: 8px; padding: 12px 14px; }
+  .result-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #10b981; margin-bottom: 4px; font-weight: 600; }
+  .result-value { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+  .result-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+  .verdict { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; }
+  .verdict.success { background: #064e3b; border: 1px solid #10b981; }
+  .verdict.fail    { background: #450a0a; border: 1px solid #dc2626; }
+  .verdict-icon { font-size: 24px; }
+  .verdict-text { font-size: 14px; font-weight: 600; }
+  .verdict.success .verdict-text { color: #6ee7b7; }
+  .verdict.fail    .verdict-text { color: #fca5a5; }
+  .verdict-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+  .prob-bar-wrap { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; }
+  .prob-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+  .prob-bar-track { height: 8px; background: #334155; border-radius: 99px; overflow: hidden; }
+  .prob-bar-fill  { height: 8px; border-radius: 99px; transition: width 0.5s ease; }
+  .prob-bar-fill.high { background: #10b981; }
+  .prob-bar-fill.low  { background: #ef4444; }
 `;
 
 function Field({ label, children }) {
@@ -53,18 +77,13 @@ export default function FR05() {
     task_type: "Bug",
     assignee_role: "Developer",
     experience_years: 0,
-    team_size: 1,
     sprint_length_days: 14,
     story_points: 5,
-    estimated_hours: 16,
     dependencies_count: 1,
     blockers_count: 0,
     priority_moscow: "Must",
     requirement_changes: 0,
     communication_volume: 40,
-    sentiment_score: 0.2,
-    ai_suggestion_used: 1,
-    ai_acceptance_rate: 0.7,
   });
 
   const [loading, setLoading] = useState(false);
@@ -77,27 +96,41 @@ export default function FR05() {
 
   async function run() {
     setLoading(true); setErr(""); setOut(null);
-    try { setOut(await postJSON("/fr05/predict", form)); }
-    catch (e) { setErr(e.message); }
-    finally { setLoading(false); }
+    try {
+      console.log("%c── FR05: Input Form Data ──────────────────────────────────", "color: #10b981; font-weight: bold;");
+      console.log(JSON.stringify(form, null, 2));
+
+      // Calls POST /api/sprintpilot/predict via the api.js wrapper
+      const result = await sprintpilot.predict(form);
+
+      console.log("%c── FR05: Prediction Result ────────────────────────────────", "color: #10b981; font-weight: bold;");
+      console.log(JSON.stringify(result, null, 2));
+
+      setOut(result);
+    } catch (e) {
+      console.error("%c── FR05: Error ────────────────────────────────────────────", "color: #dc2626; font-weight: bold;");
+      console.error(e.message);
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const fields = [
     { key: "task_type", label: "Task Type", type: "select", options: TASK_TYPES.map(v => ({ value: v, label: v })) },
     { key: "assignee_role", label: "Assignee Role", type: "select", options: ASSIGNEE_ROLES.map(v => ({ value: v, label: v })) },
     { key: "experience_years", label: "Experience Years", type: "number" },
-    { key: "team_size", label: "Team Size", type: "number" },
     { key: "sprint_length_days", label: "Sprint Length (days)", type: "number" },
     { key: "story_points", label: "Story Points", type: "number" },
-    { key: "estimated_hours", label: "Estimated Hours", type: "number" },
     { key: "dependencies_count", label: "Dependencies Count", type: "number" },
-    { key: "blockers_count", label: "Blockers Count", type: "number" },
-    { key: "priority_moscow", label: "Priority MoSCoW", type: "select", options: MOSCOW_PRIORITIES },
-    { key: "requirement_changes", label: "Requirement Changes", type: "number" },
-    { key: "communication_volume", label: "Communication Volume", type: "number" },
-    { key: "sentiment_score", label: "Sentiment Score (-1..1)", type: "number", step: "0.1" },
-    { key: "ai_acceptance_rate", label: "AI Acceptance Rate (0..1)", type: "number", step: "0.1" },
+    { key: "blockers_count", label: "Current Blockers Count", type: "number" },
+    { key: "priority_moscow", label: "Priority", type: "select", options: MOSCOW_PRIORITIES },
+    { key: "requirement_changes", label: "Possible Requirement Changes", type: "number" },
+    { key: "communication_volume", label: "Communication Volume of the team", type: "number" },
   ];
+
+  const probPct = out ? Math.round(out.success_probability * 100) : 0;
+  const isSuccess = out?.prediction === 1;
 
   return (
     <div className="page">
@@ -110,10 +143,7 @@ export default function FR05() {
             {fields.map(f => (
               <Field key={f.key} label={f.label}>
                 {f.type === "select" ? (
-                  <select
-                    value={form[f.key]}
-                    onChange={e => setField(f.key, e.target.value)}
-                  >
+                  <select value={form[f.key]} onChange={e => setField(f.key, e.target.value)}>
                     {f.options.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
@@ -140,9 +170,47 @@ export default function FR05() {
 
       {out && (
         <div className="card">
-          <div className="card-header"><p className="card-title">FR05 Output</p></div>
+          <div className="card-header"><p className="card-title">Prediction Result</p></div>
           <div className="card-body">
-            <pre className="code-out">{JSON.stringify(out, null, 2)}</pre>
+
+            {/* Verdict banner */}
+            <div className={`verdict ${isSuccess ? "success" : "fail"}`}>
+              <span className="verdict-icon">{isSuccess ? "✅" : "⚠️"}</span>
+              <div>
+                <p className="verdict-text">{isSuccess ? "Task likely to succeed" : "Task at risk of failure"}</p>
+                <p className="verdict-sub">
+                  Confidence threshold: {Math.round((out.threshold || 0.5) * 100)}%
+                </p>
+              </div>
+            </div>
+
+            {/* Probability bar */}
+            <div className="prob-bar-wrap">
+              <div className="prob-bar-label">
+                <span>Success Probability</span>
+                <span style={{ color: isSuccess ? "#6ee7b7" : "#fca5a5", fontWeight: 700 }}>{probPct}%</span>
+              </div>
+              <div className="prob-bar-track">
+                <div
+                  className={`prob-bar-fill ${isSuccess ? "high" : "low"}`}
+                  style={{ width: `${probPct}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Key metrics */}
+            <div className="result-grid">
+              <div className="result-item">
+                <p className="result-label">Raw Probability</p>
+                <p className="result-value">{out.success_probability?.toFixed(3)}</p>
+              </div>
+              <div className="result-item">
+                <p className="result-label">Threshold</p>
+                <p className="result-value">{out.threshold}</p>
+                <p className="result-sub">Minimum to predict success</p>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

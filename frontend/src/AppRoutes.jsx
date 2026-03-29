@@ -5,7 +5,6 @@ import SprintPlanPage from "./pages/SprintPlanPage";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 
-
 export default function AppRoutes() {
   return (
     <Routes>
@@ -14,9 +13,8 @@ export default function AppRoutes() {
       <Route path="/signup" element={<SignUp />} />
       <Route path="/fr05" element={<FR05 />} />
       <Route path="/sprint-plan" element={<SprintPlanPage />} />
+      <Route path="/sprint-plan/:id" element={<SprintPlanPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
-
-SprintPlanPage

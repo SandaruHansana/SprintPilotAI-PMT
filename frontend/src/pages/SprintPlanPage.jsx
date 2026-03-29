@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -12,12 +13,8 @@ function ProgressRing({ pct, size = 56, stroke = 5 }) {
   return (
     <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#334155" strokeWidth={stroke} />
-      <circle
-        cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="#10b981" strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round"
-      />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#10b981" strokeWidth={stroke}
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
     </svg>
   );
 }
@@ -25,8 +22,11 @@ function ProgressRing({ pct, size = 56, stroke = 5 }) {
 const css = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
-
   .page { min-height: 100vh; background: #0f172a; }
+  .content { max-width: 860px; margin: 0 auto; margin-left: calc(220px + ((100vw - 220px - 860px) / 2)); padding: 32px 24px; }
+  @media (max-width: 1140px) { .content { margin-left: 220px; } }
+  @media (max-width: 768px) { .content { margin-left: 0; padding: 72px 16px 32px; } }
+  @media (max-width: 600px) { .pills { gap: 6px; } .pill { font-size: 11px; padding: 4px 10px; } .plan-card-inner { flex-direction: column; align-items: flex-start; gap: 12px; } .header-right { align-self: flex-end; } .tabs { flex-wrap: wrap; } }
 
   .header-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #10b981; margin-bottom: 4px; }
   .header-title { font-size: 18px; font-weight: 700; color: #fff; }
@@ -39,8 +39,6 @@ const css = `
   .task-count span { color: #64748b; }
   .task-count p { font-size: 12px; color: #94a3b8; }
   .plan-card-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-
-  .content { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
 
   .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
   .progress-header { display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
@@ -90,48 +88,107 @@ const css = `
   .panel-footer { padding: 12px 20px; border-top: 1px solid #334155; font-size: 12px; color: #64748b; font-style: italic; }
   .empty { padding: 40px 20px; text-align: center; color: #64748b; font-size: 14px; }
 
-  .plan-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 16px; }
-  .plan-meta-item { background: #0f172a; border: 1px solid #1e3a2f; border-radius: 8px; padding: 12px 14px; }
-  .plan-meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #10b981; margin-bottom: 4px; font-weight: 600; }
-  .plan-meta-value { font-size: 14px; font-weight: 600; color: #f1f5f9; }
-  .plan-meta-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
-  .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #10b981; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
-  .card-divider { border: none; border-top: 1px solid #334155; margin: 16px 0; }
-  .goal-text { font-size: 14px; color: #cbd5e1; line-height: 1.6; font-style: italic; }
-
   .bottom { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; }
   .back-btn { background: none; border: none; cursor: pointer; color: #64748b; font-size: 13px; }
   .back-btn:hover { color: #cbd5e1; }
   .complete-banner { background: #064e3b; color: #6ee7b7; border-radius: 99px; padding: 8px 16px; font-size: 13px; font-weight: 600; }
 
-  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; }
-  .empty-state p { color: #94a3b8; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
+  .empty-state p { color: #94a3b8; font-size: 14px; }
+  .empty-state .btn { padding: 8px 20px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; background: #10b981; color: #fff; }
+  .empty-state .btn:hover { background: #059669; }
+
+  .plan-list { display: flex; flex-direction: column; gap: 12px; }
+  .plan-item { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .plan-item:hover { border-color: #10b981; }
+  .plan-item-title { font-size: 14px; font-weight: 600; color: #f1f5f9; }
+  .plan-item-meta { font-size: 12px; color: #64748b; margin-top: 3px; }
+  .plan-item-pct { font-size: 13px; font-weight: 700; color: #10b981; flex-shrink: 0; }
+  .section-title { font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+  .delete-btn { background: none; border: none; cursor: pointer; color: #475569; font-size: 12px; padding: 4px 8px; border-radius: 6px; }
+  .delete-btn:hover { color: #ef4444; background: #1a0a0a; }
 `;
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function SprintPlanPage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const { user, loading: authLoading } = useAuth();
+
+  const [plans, setPlans] = useState([]);
   const [plan, setPlan] = useState(null);
   const [completedTasks, setCompletedTasks] = useState({});
   const [activeSprint, setActiveSprint] = useState(0);
   const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [savingCompletion, setSavingCompletion] = useState(false);
 
+  // ── Load data ─────────────────────────────────────────────
   useEffect(() => {
-    const raw = localStorage.getItem("approvedSprintPlan");
-    if (!raw) return;
-    setPlan(JSON.parse(raw));
-    const saved = localStorage.getItem("sprintTaskCompletions");
-    if (saved) setCompletedTasks(JSON.parse(saved));
-  }, []);
+    //  Wait for AuthContext to finish checking the cookie first.
+    // Without this, on refresh user=null (still loading) triggers
+    // the localStorage fallback before the real user is known.
+    if (authLoading) return;
 
-  function toggleTask(sprintIdx, taskIdx) {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    if (id) {
+      fetch(`${API_BASE}/api/sprintplan/${id}`, { credentials: "include" })
+        .then(r => r.json())
+        .then(data => {
+          if (data.id) {
+            setPlan({ ...data.plan_json, approvedAt: data.approved_at, dbId: data.id });
+            setCompletedTasks(data.completions || {});
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    } else {
+      fetch(`${API_BASE}/api/sprintplan`, { credentials: "include" })
+        .then(r => r.json())
+        .then(data => setPlans(data.plans || []))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [id, user, authLoading]); // ← authLoading in deps
+
+  // ── Toggle task completion ────────────────────────────────
+  async function toggleTask(sprintIdx, taskIdx) {
     const key = `${sprintIdx}-${taskIdx}`;
-    setCompletedTasks(prev => {
-      const updated = { ...prev, [key]: !prev[key] };
+    const updated = { ...completedTasks, [key]: !completedTasks[key] };
+    setCompletedTasks(updated);
+
+    if (user && plan?.dbId) {
+      setSavingCompletion(true);
+      try {
+        await fetch(`${API_BASE}/api/sprintplan/${plan.dbId}/completions`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ completions: updated }),
+        });
+      } catch (e) {
+        console.error("Failed to save completion:", e);
+      } finally {
+        setSavingCompletion(false);
+      }
+    } else {
       localStorage.setItem("sprintTaskCompletions", JSON.stringify(updated));
-      return updated;
-    });
+    }
   }
 
+  async function deletePlan(e, planId) {
+    e.stopPropagation();
+    if (!confirm("Delete this sprint plan?")) return;
+    await fetch(`${API_BASE}/api/sprintplan/${planId}`, { method: "DELETE", credentials: "include" });
+    setPlans(prev => prev.filter(p => p.id !== planId));
+  }
+
+  // ── Stats ─────────────────────────────────────────────────
   const stats = useMemo(() => {
     if (!plan) return { total: 0, done: 0, pct: 0 };
     let total = 0, done = 0;
@@ -150,16 +207,81 @@ export default function SprintPlanPage() {
     });
   }, [plan, completedTasks]);
 
-  if (!plan) return (
-    <div className="page">
-      <style>{css}</style>
+  // ── Loading (auth still resolving OR data fetching) ───────
+  if (authLoading || loading) return (
+    <div className="page"><style>{css}</style>
+      <div className="empty-state"><p>Loading...</p></div>
+    </div>
+  );
+
+  // ── Plan list (no ID, logged in) ──────────────────────────
+  if (!id && user) {
+    return (
+      <div className="page"><style>{css}</style>
+        <div className="content">
+          <p className="section-title">Your Sprint Plans</p>
+          {plans.length === 0 ? (
+            <div className="empty-state">
+              <p>No sprint plans yet.</p>
+              <button className="btn" onClick={() => navigate("/")}>← Create a Sprint Plan</button>
+            </div>
+          ) : (
+            <div className="plan-list">
+              {plans.map(p => {
+                const completions = p.completions || {};
+                const sprints = p.plan_json?.sprints || [];
+                let total = 0, done = 0;
+                sprints.forEach((sp, si) => sp.tasks?.forEach((_, ti) => {
+                  total++; if (completions[`${si}-${ti}`]) done++;
+                }));
+                const pct = total ? Math.round((done / total) * 100) : 0;
+                return (
+                  <div key={p.id} className="plan-item" onClick={() => navigate(`/sprint-plan/${p.id}`)}>
+                    <div>
+                      <p className="plan-item-title">{p.title}</p>
+                      <p className="plan-item-meta">
+                        {new Date(p.approved_at).toLocaleDateString("en-US", { dateStyle: "medium" })}
+                        {" · "}{total} tasks
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span className="plan-item-pct">{pct}%</span>
+                      <button className="delete-btn" onClick={e => deletePlan(e, p.id)}>🗑</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="bottom">
+            <button className="back-btn" onClick={() => navigate("/")}>← Back to Planner</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Not logged in ─────────────────────────────────────────
+  if (!user) return (
+    <div className="page"><style>{css}</style>
       <div className="empty-state">
-        <p>No approved sprint plan found.</p>
-        <button className="back-btn" onClick={() => navigate(-1)}>← Go Back</button>
+        <p>Sign in to view your sprint plans.</p>
+        <button className="btn" onClick={() => navigate("/signin")}>Sign in</button>
       </div>
     </div>
   );
 
+  // ── No plan found ─────────────────────────────────────────
+  if (!plan) return (
+    <div className="page"><style>{css}</style>
+      <div className="empty-state">
+        <p>No sprint plan found.</p>
+        <button className="btn" onClick={() => navigate("/")}>← Create a Sprint Plan</button>
+      </div>
+    </div>
+  );
+
+  // ── Detail view ───────────────────────────────────────────
   const currentSprint = plan.sprints?.[activeSprint];
   const filteredTasks = currentSprint?.tasks?.filter((_, ti) => {
     const key = `${activeSprint}-${ti}`;
@@ -172,13 +294,12 @@ export default function SprintPlanPage() {
   return (
     <div className="page">
       <style>{css}</style>
-
       <div className="content">
-        {/* Plan Header Card */}
+
         <div className="card">
           <div className="plan-card-inner">
             <div>
-              <p className="header-label">Approved Plan</p>
+              <p className="header-label">Sprint Plan {savingCompletion && "· saving…"}</p>
               <h1 className="header-title">
                 {plan.original_goal?.slice(0, 60) || "Sprint Plan"}
                 {plan.original_goal?.length > 60 ? "…" : ""}
@@ -202,7 +323,6 @@ export default function SprintPlanPage() {
           </div>
         </div>
 
-        {/* Overall Progress Card */}
         <div className="card">
           <div className="progress-header">
             <span>Overall Progress</span>
@@ -217,11 +337,8 @@ export default function SprintPlanPage() {
               const isDone = s?.pct === 100;
               const isActive = si === activeSprint;
               return (
-                <button
-                  key={si}
-                  onClick={() => setActiveSprint(si)}
-                  className={cx("pill", isActive ? "active" : isDone ? "done" : "")}
-                >
+                <button key={si} onClick={() => setActiveSprint(si)}
+                  className={cx("pill", isActive ? "active" : isDone ? "done" : "")}>
                   {sp.name || `Sprint ${si + 1}`}
                   {isDone ? " ✓" : ` · ${s?.done}/${s?.total}`}
                 </button>
@@ -247,9 +364,7 @@ export default function SprintPlanPage() {
               </div>
               <div className="tabs">
                 {["all", "pending", "done"].map(f => (
-                  <button key={f} onClick={() => setFilter(f)} className={cx("tab", filter === f ? "active" : "")}>
-                    {f}
-                  </button>
+                  <button key={f} onClick={() => setFilter(f)} className={cx("tab", filter === f ? "active" : "")}>{f}</button>
                 ))}
               </div>
             </div>
@@ -263,11 +378,7 @@ export default function SprintPlanPage() {
                 return (
                   <li key={key} className="task-row" onClick={() => toggleTask(activeSprint, origIdx)}>
                     <div className={cx("check", done ? "checked" : "")}>
-                      {done && (
-                        <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
+                      {done && <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>}
                     </div>
                     <div className="task-body">
                       <p className={cx("task-title", done ? "done" : "")}>{task.title}</p>
@@ -283,18 +394,14 @@ export default function SprintPlanPage() {
                 );
               })}
             </ul>
-
-            {currentSprint.notes && (
-              <div className="panel-footer">{currentSprint.notes}</div>
-            )}
+            {currentSprint.notes && <div className="panel-footer">{currentSprint.notes}</div>}
           </div>
         )}
 
         <div className="bottom">
-          <button className="back-btn" onClick={() => navigate(-1)}>← Back to Planner</button>
-          {stats.pct === 100 && (
-            <div className="complete-banner">🎉 All sprints complete!</div>
-          )}
+          <button className="back-btn" onClick={() => navigate("/sprint-plan")}>← All Plans
+          </button>
+          {stats.pct === 100 && <div className="complete-banner"> All sprints complete!</div>}
         </div>
       </div>
     </div>

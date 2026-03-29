@@ -1,0 +1,18 @@
+{
+  "feature_columns_used": [
+    "task_type",
+    "priority_moscow",
+    "assignee_role",
+    "experience_years",
+    "sprint_length_days",
+    "story_points",
+    "dependencies_count",
+    "blockers_count",
+    "requirement_changes",
+    "communication_volume",
+    "override_requested",
+    "risk_score"
+  ],
+  "categorical_columns": ["task_type", "priority_moscow", "assignee_role"],
+  "threshold": 0.5900000000000003
+}
