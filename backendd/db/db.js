@@ -8,7 +8,7 @@ const pool = mysql.createPool({
 	port: Number(process.env.DB_PORT || 3306),
 	user: process.env.DB_USER || 'root',
 	password: process.env.DB_PASSWORD || '',
-	database: process.env.DB_NAME || 'legal_app',
+	database: process.env.DB_NAME || 'sprintpilotai',
 	waitForConnections: true,
 	connectionLimit: Number(process.env.DB_POOL_SIZE || 10),
 	queueLimit: 0,

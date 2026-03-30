@@ -1,52 +1,21 @@
-/**
- * SprintPilotAI – Node.js wrapper
- * ================================
- * pipeline()  → calls Groq API directly (no Python needed)
- * predict()   → still calls sprintpilot.py via child_process (FR05 joblib model)
- *
- * Setup
- * -----
- *   1. npm install groq-sdk
- *   2. Set GROQ_API_KEY in your .env file.
- *      Get a free key at: https://console.groq.com
- *   3. For predict() only: keep sprintpilot.py next to this file
- *      with Python ≥3.9 + joblib + pandas installed.
- *
- * Usage
- * -----
- *   const sp = require('./sprintpilot');
- *
- *   // Full pipeline (FR01 → FR02 → FR03) via Groq
- *   const result = await sp.pipeline("Build a food delivery app within 8 weeks");
- *   console.log(result.fr01);  // parsed goal
- *   console.log(result.fr02);  // task decomposition
- *   console.log(result.fr03);  // sprint plan
- *
- *   // FR05 task success prediction (still uses Python/joblib)
- *   const pred = await sp.predict({ task_type: "backend", assignee_role: "senior_dev", ... });
- *   console.log(pred.prediction);          // 0 or 1
- *   console.log(pred.success_probability); // e.g. 0.82
- */
-
 "use strict";
 
+// Imports: child_process to call Python, path for file resolution, Groq SDK for LLM calls
 const { execFile } = require("child_process");
 const path = require("path");
 const Groq = require("groq-sdk");
 
-// ── Config ────────────────────────────────────────────────────────────────────
-
+// Environment config
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL   = process.env.GROQ_MODEL   || "llama-3.3-70b-versatile";
 
-// FR05 Python config (unchanged)
+
 const PY_BIN     = process.env.SPRINTPILOT_PYTHON     || "python";
 const PY_SCRIPT  = process.env.SPRINTPILOT_PY_PATH    || path.join(__dirname, "sprintpilot.py");
 const MODELS_DIR = process.env.SPRINTPILOT_MODELS_DIR || path.join(__dirname, "models");
 const TIMEOUT_MS = parseInt(process.env.SPRINTPILOT_TIMEOUT_MS || "300000", 10);
 
-// ── Groq helper ───────────────────────────────────────────────────────────────
-
+// Creates and returns a Groq client 
 function getGroqClient() {
   if (!GROQ_API_KEY) {
     throw new Error(
@@ -57,6 +26,7 @@ function getGroqClient() {
   return new Groq({ apiKey: GROQ_API_KEY });
 }
 
+// Sends a prompt to the Groq API and returns the plain text 
 async function callGroq(prompt) {
   const groq = getGroqClient();
   const res = await groq.chat.completions.create({
@@ -66,13 +36,12 @@ async function callGroq(prompt) {
   return res.choices[0].message.content.replace(/```json\s*|```/g, "").trim();
 }
 
-// ── Goal validation helper ────────────────────────────────────────────────────
-
-// Single words / greetings that are clearly not project goals
+// List of single-word or greeting inputs that are not valid project goals
 const INVALID_GOAL_PATTERNS = [
   /^(help|hi|hello|hey|test|ok|okay|yes|no|thanks|bye|quit|exit|start|go|run)$/i,
 ];
 
+// Validates the raw goal text: rejects inputs that are too short or match known non-goal patterns
 function validateGoalText(goalText) {
   const cleaned = goalText.trim();
 
@@ -95,7 +64,7 @@ function validateGoalText(goalText) {
   return cleaned;
 }
 
-// ── FR01: Parse goal ──────────────────────────────────────────────────────────
+// FR01
 
 async function fr01ParseGoal(goalText) {
   const prompt = `
@@ -144,7 +113,7 @@ Rules:
   }
 }
 
-// ── FR02: Decompose into tasks ────────────────────────────────────────────────
+// FR02
 
 async function fr02DecomposeTasks(fr01) {
   const prompt = `
@@ -184,14 +153,14 @@ Rules:
     throw new Error(`FR02 (Groq) returned invalid JSON: ${raw.slice(0, 300)}`);
   }
 
-  // Re-assign sequential IDs and build id→title map for resolution
+  // Give each task a clean sequential ID and clamp estimate_days to the allowed 1-8 range
   const reindexed = tasks.map((t, i) => ({
     ...t,
     id: `T-${String(i + 1).padStart(3, "0")}`,
     estimate_days: Math.max(1, Math.min(8, parseInt(t.estimate_days) || 3)),
   }));
 
-  // If Groq ignored the "use titles" rule and returned IDs, resolve them back to titles
+  // Build a map of ID to title so dependency references can be resolved to readable names
   const idToTitle = {};
   reindexed.forEach(t => { idToTitle[t.id] = t.title; });
 
@@ -203,7 +172,7 @@ Rules:
   }));
 }
 
-// ── FR03: Schedule sprints (pure JS — no LLM needed) ─────────────────────────
+// FR03
 
 function fr03GenerateSprintPlan(tasks, fr01, { sprintDays = 14, velocity = 14 } = {}) {
   const scheduled = new Set();
@@ -231,7 +200,7 @@ function fr03GenerateSprintPlan(tasks, fr01, { sprintDays = 14, velocity = 14 } 
       }
     }
 
-    // Force-schedule if all remaining tasks are blocked (avoid infinite loop)
+    // Force-schedule the next blocked task to avoid getting stuck in an infinite loop
     if (sprintTasks.length === 0 && remaining.length > 0) {
       const forced = remaining.shift();
       sprintTasks.push(forced);
@@ -272,7 +241,7 @@ function fr03GenerateSprintPlan(tasks, fr01, { sprintDays = 14, velocity = 14 } 
   };
 }
 
-// ── Python helper (FR05 only) ─────────────────────────────────────────────────
+// Spawns sprintpilot.py 
 
 function runPython(args) {
   return new Promise((resolve, reject) => {
@@ -299,16 +268,8 @@ function runPython(args) {
   });
 }
 
-// ── Velocity validation helper ────────────────────────────────────────────────
+// Validates the velocity value 
 
-/**
- * Parse and validate a user-supplied velocity value.
- * Accepts numbers or numeric strings. Must be an integer in [1, 999].
- *
- * @param {number|string} raw
- * @returns {number} validated integer velocity
- * @throws {TypeError} if the value is missing, non-numeric, or out of range
- */
 function validateVelocity(raw) {
   if (raw === undefined || raw === null || raw === "") {
     throw new TypeError(
@@ -336,15 +297,8 @@ function validateVelocity(raw) {
   return int;
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+//  validates and parses the goal text via FR01
 
-/**
- * STAGE 1 — Parse the goal only (FR01).
- * Call this first, then prompt the user for velocity, then call pipelineComplete().
- *
- * @param {string} goalText  Natural-language project goal.
- * @returns {Promise<{fr01: object, velocity_prompt: string}>}
- */
 async function pipelineParseGoal(goalText) {
   if (!goalText || typeof goalText !== "string") {
     throw new TypeError("goalText must be a non-empty string.");
@@ -368,15 +322,8 @@ async function pipelineParseGoal(goalText) {
   };
 }
 
-/**
- * STAGE 2 — Complete the pipeline (FR02 + FR03) using the fr01 result and user-supplied velocity.
- *
- * @param {object} fr01                  Result object from pipelineParseGoal().fr01
- * @param {number|string} velocityInput  Velocity entered by the user (person-days per sprint).
- * @param {object} [opts]
- * @param {number} [opts.sprintDays=14]  Sprint length in calendar days.
- * @returns {Promise<{fr01: object, fr02: object, fr03: object}>}
- */
+//  takes the fr01 result and user-supplied velocity
+
 async function pipelineComplete(fr01, velocityInput, { sprintDays = 14 } = {}) {
   if (!fr01 || typeof fr01 !== "object") {
     throw new TypeError("fr01 must be the parsed goal object returned by pipelineParseGoal().");
@@ -389,16 +336,8 @@ async function pipelineComplete(fr01, velocityInput, { sprintDays = 14 } = {}) {
   return { fr01, fr02: { tasks }, fr03 };
 }
 
-/**
- * Run the full FR01 → FR02 → FR03 pipeline in one call.
- * velocity is now REQUIRED — no silent default is applied.
- *
- * @param {string}        goalText              Natural-language project goal.
- * @param {object}        opts
- * @param {number|string} opts.velocity         Team velocity in person-days per sprint (required).
- * @param {number}        [opts.sprintDays=14]  Sprint length in calendar days.
- * @returns {Promise<{fr01: object, fr02: object, fr03: object}>}
- */
+// Runs the full  pipeline 
+
 async function pipeline(goalText, { sprintDays = 14, velocity } = {}) {
   if (!goalText || typeof goalText !== "string") {
     throw new TypeError("goalText must be a non-empty string.");
@@ -410,21 +349,8 @@ async function pipeline(goalText, { sprintDays = 14, velocity } = {}) {
   return pipelineComplete(fr01, velocity_validated, { sprintDays });
 }
 
-/**
- * FR05: Predict task success probability (unchanged — uses Python/joblib).
- *
- * @param {object} inputData  Feature object.
- * @param {object} [opts]
- * @param {string} [opts.modelsDir]  Path to folder containing .joblib + .json files.
- * @returns {Promise<{prediction: number, success_probability: number, threshold: number, input_used: object}>}
- *
- * Required fields:
- *   task_type, assignee_role, experience_years,
- *   sprint_length_days, story_points,
- *   dependencies_count, blockers_count, priority_moscow,
- *   requirement_changes, communication_volume, sentiment_score,
- *   override_requested (optional)
- */
+// FR05
+
 async function predict(inputData, { modelsDir } = {}) {
   if (!inputData || typeof inputData !== "object") {
     throw new TypeError("inputData must be a plain object.");
@@ -434,27 +360,9 @@ async function predict(inputData, { modelsDir } = {}) {
   return runPython(args);
 }
 
-// ── Express route helpers ─────────────────────────────────────────────────────
+// Express route handlers
 
 const expressHandlers = {
-  /**
-   * POST /api/pipeline
-   *
-   * Two-step flow (recommended — prompts user for velocity between steps):
-   *
-   *   Step 1 — send goal only (no velocity):
-   *     Body:    { goal_text, sprint_days? }
-   *     Returns: { step: "needs_velocity", fr01: {...}, velocity_prompt: "..." }
-   *             → Show velocity_prompt to the user, collect their answer, then call Step 2.
-   *
-   *   Step 2 — send goal + fr01 + user-supplied velocity:
-   *     Body:    { goal_text, sprint_days?, velocity: <number>, fr01: <fr01 from step 1> }
-   *     Returns: { fr01: {...}, fr02: {...}, fr03: {...} }
-   *
-   * Single-step (programmatic / CLI callers) — supply velocity upfront:
-   *     Body:    { goal_text, sprint_days?, velocity: 14 }
-   *     Returns: { fr01: {...}, fr02: {...}, fr03: {...} }
-   */
   pipeline: async (req, res) => {
     const { goal_text, sprint_days, velocity, fr01: fr01Body } = req.body || {};
 
@@ -463,19 +371,16 @@ const expressHandlers = {
     }
 
     try {
-      // Step 2: fr01 already parsed client-side, velocity now provided by user
       if (fr01Body && velocity !== undefined && velocity !== null && velocity !== "") {
         const result = await pipelineComplete(fr01Body, velocity, { sprintDays: sprint_days });
         return res.json(result);
       }
 
-      // Step 1: parse goal only, return prompt asking for velocity
       if (velocity === undefined || velocity === null || velocity === "") {
         const { fr01, velocity_prompt } = await pipelineParseGoal(goal_text);
         return res.json({ step: "needs_velocity", fr01, velocity_prompt });
       }
 
-      // Single-step: velocity was supplied upfront
       const result = await pipeline(goal_text, { sprintDays: sprint_days, velocity });
       res.json(result);
 
@@ -485,10 +390,6 @@ const expressHandlers = {
     }
   },
 
-  /**
-   * POST /api/predict
-   * Body: FR05 feature object
-   */
   predict: async (req, res) => {
     try {
       const result = await predict(req.body || {});
@@ -499,6 +400,5 @@ const expressHandlers = {
   },
 };
 
-// ── Exports ───────────────────────────────────────────────────────────────────
-
+// Export public functions and Express handlers for use by other modules
 module.exports = { pipeline, pipelineParseGoal, pipelineComplete, predict, expressHandlers };

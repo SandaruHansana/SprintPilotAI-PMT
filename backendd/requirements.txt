@@ -19,10 +19,5 @@ pandas==2.1.1
 torch==2.5.1+cu121
 torchvision==0.20.1+cu121
 torchaudio==2.5.1+cu121
-transformers==4.42.0
-spacy==3.6.1
 thinc==8.1.12
 
-# Optional: NLP Models for spaCy
-# en_core_web_sm can be installed separately after installing spaCy
-# python -m spacy download en_core_web_sm

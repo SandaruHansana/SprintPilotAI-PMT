@@ -175,7 +175,7 @@ export default function FR05() {
 
             {/* Verdict banner */}
             <div className={`verdict ${isSuccess ? "success" : "fail"}`}>
-              <span className="verdict-icon">{isSuccess ? "✅" : "⚠️"}</span>
+              <span className="verdict-icon">{isSuccess ? "" : "!"}</span>
               <div>
                 <p className="verdict-text">{isSuccess ? "Task likely to succeed" : "Task at risk of failure"}</p>
                 <p className="verdict-sub">

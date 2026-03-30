@@ -67,7 +67,7 @@ export default function SignInPage() {
             const data = await res.json();
             if (!res.ok) { setError(data.message || "Sign in failed. Please try again."); return; }
 
-            // ✅ Update global auth state immediately — Navigation updates instantly
+            //  Update global auth state immediately — Navigation updates instantly
             setUser(data.user);
             navigate("/");
         } catch {

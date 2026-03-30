@@ -103,7 +103,7 @@ export default function SignUpPage() {
             const data = await res.json();
             if (!res.ok) { setError(data.message || "Registration failed. Please try again."); return; }
 
-            // ✅ Update global auth state immediately — Navigation updates instantly
+            //  Update global auth state immediately — Navigation updates instantly
             setUser(data.user);
             navigate("/");
         } catch {

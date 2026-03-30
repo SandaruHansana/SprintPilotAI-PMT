@@ -306,7 +306,7 @@ export default function SprintPlanner() {
               <p className="review-desc">Review and edit tasks inline before approving.</p>
               <div className="row">
                 <button className="btn btn-outline" onClick={() => setIsEditing(!isEditing)}>
-                  {isEditing ? "Done Editing" : "✏️ Edit Plan"}
+                  {isEditing ? "Done Editing" : " Edit Plan"}
                 </button>
                 <button className="btn btn-primary" onClick={handleApprovePlan} disabled={approving}>
                   {approving ? "Saving..." : " Approve Plan"}

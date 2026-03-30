@@ -154,9 +154,9 @@ export default function SprintPlanPage() {
         .catch(console.error)
         .finally(() => setLoading(false));
     }
-  }, [id, user, authLoading]); // ← authLoading in deps
+  }, [id, user, authLoading]); // authLoading in deps
 
-  // ── Toggle task completion ────────────────────────────────
+  //  Toggle task completion 
   async function toggleTask(sprintIdx, taskIdx) {
     const key = `${sprintIdx}-${taskIdx}`;
     const updated = { ...completedTasks, [key]: !completedTasks[key] };
@@ -188,7 +188,7 @@ export default function SprintPlanPage() {
     setPlans(prev => prev.filter(p => p.id !== planId));
   }
 
-  // ── Stats ─────────────────────────────────────────────────
+  // Stats 
   const stats = useMemo(() => {
     if (!plan) return { total: 0, done: 0, pct: 0 };
     let total = 0, done = 0;
@@ -207,14 +207,14 @@ export default function SprintPlanPage() {
     });
   }, [plan, completedTasks]);
 
-  // ── Loading (auth still resolving OR data fetching) ───────
+  // Loading (auth still resolving OR data fetching) 
   if (authLoading || loading) return (
     <div className="page"><style>{css}</style>
       <div className="empty-state"><p>Loading...</p></div>
     </div>
   );
 
-  // ── Plan list (no ID, logged in) ──────────────────────────
+  //  Plan list (no ID, logged in) 
   if (!id && user) {
     return (
       <div className="page"><style>{css}</style>
@@ -261,7 +261,7 @@ export default function SprintPlanPage() {
     );
   }
 
-  // ── Not logged in ─────────────────────────────────────────
+  // Not logged in 
   if (!user) return (
     <div className="page"><style>{css}</style>
       <div className="empty-state">
@@ -271,7 +271,7 @@ export default function SprintPlanPage() {
     </div>
   );
 
-  // ── No plan found ─────────────────────────────────────────
+  // No plan found 
   if (!plan) return (
     <div className="page"><style>{css}</style>
       <div className="empty-state">
@@ -281,7 +281,7 @@ export default function SprintPlanPage() {
     </div>
   );
 
-  // ── Detail view ───────────────────────────────────────────
+  // Detail view
   const currentSprint = plan.sprints?.[activeSprint];
   const filteredTasks = currentSprint?.tasks?.filter((_, ti) => {
     const key = `${activeSprint}-${ti}`;
